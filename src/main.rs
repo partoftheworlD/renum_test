@@ -16,37 +16,38 @@ fn main() {
     const SYSPROCESSINFO: SYSTEM_INFORMATION_CLASS = SYSTEM_INFORMATION_CLASS(0x5);
     let mut buffer_size = 1024 * 1024;
     let mut process_information = Vec::<u8>::with_capacity(buffer_size as usize);
-
-    unsafe {
-        let _ = NtQuerySystemInformation(
+    let _ = unsafe {
+        NtQuerySystemInformation(
             SYSPROCESSINFO,
             process_information.as_mut_ptr().cast(),
             buffer_size,
             &mut buffer_size,
-        );
-        let mut process_count = 0;
-        let mut count = 0;
-        loop {
-            let process = *(process_information
+        )
+    };
+    let mut process_count = 0;
+    let mut count = 0;
+    loop {
+        let process = unsafe {
+            *(process_information
                 .as_ptr()
                 .offset(count)
-                .cast::<SYSTEM_PROCESS_INFORMATION>());
+                .cast::<SYSTEM_PROCESS_INFORMATION>())
+        };
 
-            if !process.ImageName.Buffer.is_null() {
-                let pwstr_string = process.ImageName.Buffer;
-                let process_name = read_pwstr(pwstr_string.0);
-                println!(
-                    "Process name: {process_name:?} pID: {:X?}",
-                    process.UniqueProcessId.0
-                );
-            }
-            let next = process.NextEntryOffset;
-            if next == 0 {
-                break;
-            }
-            process_count += 1;
-            count += next as isize;
+        if !process.ImageName.Buffer.is_null() {
+            let pwstr_string = process.ImageName.Buffer;
+            let process_name = read_pwstr(pwstr_string.0);
+            println!(
+                "Process name: {process_name:?} pID: {:X?}",
+                process.UniqueProcessId.0
+            );
         }
-        println!("Total processes: {process_count:?}",)
-    };
+        let next = process.NextEntryOffset;
+        if next == 0 {
+            break;
+        }
+        process_count += 1;
+        count += next as isize;
+    }
+    println!("Total processes: {process_count:?}")
 }
