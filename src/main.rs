@@ -44,8 +44,8 @@ fn main() {
             let pwstr_string = process.ImageName.Buffer;
             let process_name = read_pwstr(pwstr_string.0);
             println!(
-                "Process name: {process_name:?} pID: {:X?}",
-                process.UniqueProcessId.0
+                "Process name: {process_name:?} pID: {:X?} Threads: {:?}",
+                process.UniqueProcessId.0, process.NumberOfThreads
             );
         }
         let next = process.NextEntryOffset;
