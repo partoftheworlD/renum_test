@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use windows::{
     Wdk::System::SystemInformation::{NtQuerySystemInformation, SYSTEM_INFORMATION_CLASS},
     Win32::System::WindowsProgramming::SYSTEM_PROCESS_INFORMATION,
@@ -7,6 +9,22 @@ use windows::{
 enum Sic {
     SysProcessList = 5,
 }
+#[derive(Debug)]
+enum Errors<'a> {
+    EmptyBuffer(&'a str),
+    ProcessNotFound,
+}
+
+impl Display for Errors<'_> {
+    fn fmt(&'_ self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Errors::EmptyBuffer(error) => error,
+            Errors::ProcessNotFound => "Process not found!",
+        };
+        write!(f, "Error: {message:?}")
+    }
+}
+
 #[repr(C)]
 struct ProcessThings {
     info: SYSTEM_PROCESS_INFORMATION,
@@ -16,14 +34,16 @@ struct ProcessThings {
     pid: u32,
 }
 
-fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> String {
+fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     if process.ImageName.Buffer.is_null() {
-        return String::new();
+        return Err(Errors::EmptyBuffer("process.ImageName.Buffer is empty"));
     }
-    String::from_utf16_lossy(unsafe { process.ImageName.Buffer.as_wide() })
+    Ok(String::from_utf16_lossy(unsafe {
+        process.ImageName.Buffer.as_wide()
+    }))
 }
 
-fn get_process(process_name: &str) -> Vec<ProcessThings> {
+fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
     let mut process_list: Vec<ProcessThings> = Vec::new();
     static SYSPROCESSINFO: SYSTEM_INFORMATION_CLASS =
         SYSTEM_INFORMATION_CLASS(Sic::SysProcessList as i32);
@@ -47,7 +67,10 @@ fn get_process(process_name: &str) -> Vec<ProcessThings> {
                 .cast())
         };
         if !process.ImageName.Buffer.is_null() {
-            let name = read_pwstr(&process);
+            let name = match read_pwstr(&process) {
+                Ok(process_name) => process_name,
+                Err(why) => panic!("{}", why),
+            };
             if name.to_ascii_lowercase() == process_name {
                 process_list.push(ProcessThings {
                     info: process,
@@ -65,11 +88,18 @@ fn get_process(process_name: &str) -> Vec<ProcessThings> {
         }
         count += next;
     }
-    process_list
+
+    match process_list.is_empty() {
+        true => Err(Errors::ProcessNotFound),
+        false => Ok(process_list),
+    }
 }
 
 fn main() {
-    let plist = get_process("gta5.exe");
+    let plist = match get_process("gta5.exe") {
+        Ok(plist) => plist,
+        Err(why) => panic!("{}", why),
+    };
     println!("Total: {:?}", plist.len());
     for process in plist {
         println!(
