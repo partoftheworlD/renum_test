@@ -1,38 +1,12 @@
-use std::fmt::Display;
-
 use windows::{
     Wdk::System::SystemInformation::{NtQuerySystemInformation, SYSTEM_INFORMATION_CLASS},
     Win32::System::WindowsProgramming::SYSTEM_PROCESS_INFORMATION,
 };
 
-//SYSTEM_INFORMATION_CLASS enum
-enum Sic {
-    SysProcessList = 5,
-}
-#[derive(Debug)]
-enum Errors<'a> {
-    EmptyBuffer(&'a str),
-    ProcessNotFound,
-}
-
-impl Display for Errors<'_> {
-    fn fmt(&'_ self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let message = match self {
-            Errors::EmptyBuffer(error) => error,
-            Errors::ProcessNotFound => "Process not found!",
-        };
-        write!(f, "Error: {message:?}")
-    }
-}
-
-#[repr(C)]
-struct ProcessThings {
-    info: SYSTEM_PROCESS_INFORMATION,
-    name: String,
-    threads: u32,
-    handles: u32,
-    pid: u32,
-}
+mod errors;
+use errors::Errors;
+mod types;
+use types::{ProcessThings, Sic};
 
 fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     if process.ImageName.Buffer.is_null() {
@@ -45,6 +19,7 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
 
 fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
     let mut process_list: Vec<ProcessThings> = Vec::new();
+    #[allow(clippy::items_after_statements)]
     static SYSPROCESSINFO: SYSTEM_INFORMATION_CLASS =
         SYSTEM_INFORMATION_CLASS(Sic::SysProcessList as i32);
     let mut buffer_size = 1024 * 1024;
@@ -77,7 +52,7 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
                     name,
                     threads: process.NumberOfThreads,
                     handles: process.HandleCount,
-                    pid: process.UniqueProcessId.0 as u32,
+                    id: process.UniqueProcessId.0 as u32,
                 });
             }
         }
@@ -89,9 +64,10 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
         count += next;
     }
 
-    match process_list.is_empty() {
-        true => Err(Errors::ProcessNotFound),
-        false => Ok(process_list),
+    if process_list.is_empty() {
+        Err(Errors::ProcessNotFound)
+    } else {
+        Ok(process_list)
     }
 }
 
@@ -104,7 +80,7 @@ fn main() {
     for process in plist {
         println!(
             "Process ID: 0x{:04X} Name: {} Threads: {:04} Handles: {:04}",
-            process.pid, process.name, process.threads, process.handles
+            process.id, process.name, process.threads, process.handles
         );
     }
 }
