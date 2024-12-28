@@ -76,11 +76,11 @@ fn main() {
         Ok(plist) => plist,
         Err(why) => panic!("{}", why),
     };
-    println!("Total: {:?}", plist.len());
-    for process in plist {
+    for process in &plist {
         println!(
             "Process ID: 0x{:04X} Name: {} Threads: {:04} Handles: {:04}",
             process.id, process.name, process.threads, process.handles
         );
     }
+    println!("Total: {:?}", plist.len());
 }
