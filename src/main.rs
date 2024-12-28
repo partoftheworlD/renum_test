@@ -20,9 +20,7 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> String {
     if process.ImageName.Buffer.is_null() {
         return String::new();
     }
-    let pwstr = process.ImageName.Buffer.0;
-    let slice = unsafe { std::slice::from_raw_parts(pwstr, process.ImageName.Buffer.len()) };
-    String::from_utf16_lossy(slice)
+    String::from_utf16_lossy(unsafe { process.ImageName.Buffer.as_wide() })
 }
 
 fn get_process(process_name: &str) -> Vec<ProcessThings> {
