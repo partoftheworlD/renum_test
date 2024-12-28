@@ -4,6 +4,7 @@ use windows::{
 };
 
 mod errors;
+mod tests;
 use errors::Errors;
 mod types;
 use types::{ProcessThings, Sic};
@@ -18,10 +19,14 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
 }
 
 fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
-    let mut process_list: Vec<ProcessThings> = Vec::new();
-    #[allow(clippy::items_after_statements)]
     static SYSPROCESSINFO: SYSTEM_INFORMATION_CLASS =
         SYSTEM_INFORMATION_CLASS(Sic::SysProcessList as i32);
+
+    if process_name.is_empty() {
+        return Err(Errors::ProcessNotFound);
+    }
+
+    let mut process_list: Vec<ProcessThings> = Vec::new();
     let mut buffer_size = 1024 * 1024;
     let mut process_information = Vec::<u8>::with_capacity(buffer_size.try_into().unwrap());
     let _ = unsafe {

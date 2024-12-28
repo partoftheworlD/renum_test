@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Errors<'a> {
     EmptyBuffer(&'a str),
     ProcessNotFound,
