@@ -1,11 +1,11 @@
-#[allow(unused_imports)]
+#[expect(unused_imports)]
 use crate::{errors::Errors, get_process, read_pwstr};
-#[allow(unused_imports)]
+#[expect(unused_imports)]
 use windows::Win32::System::WindowsProgramming::SYSTEM_PROCESS_INFORMATION;
 
 #[test]
 fn found_process() {
-    assert!(get_process("svchost.exe").unwrap().len() >= 1)
+    assert!(!get_process("svchost.exe").unwrap().is_empty())
 }
 
 #[test]

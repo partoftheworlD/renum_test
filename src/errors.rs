@@ -1,17 +1,17 @@
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq)]
-pub enum Errors<'a> {
-    EmptyBuffer(&'a str),
+#[derive(Debug, PartialEq, Eq)]
+pub enum Errors<'src> {
+    EmptyBuffer(&'src str),
     ProcessNotFound,
 }
 
 impl Display for Errors<'_> {
     fn fmt(&'_ self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let message = match self {
+        let message = match &self {
             Errors::EmptyBuffer(error) => error,
             Errors::ProcessNotFound => "Process not found!",
         };
-        write!(f, "Error: {message:?}")
+        write!(f, "Error: {message}")
     }
 }
