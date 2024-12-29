@@ -1,13 +1,27 @@
 use windows::{
-    Wdk::System::SystemInformation::{NtQuerySystemInformation, SYSTEM_INFORMATION_CLASS},
-    Win32::System::WindowsProgramming::SYSTEM_PROCESS_INFORMATION,
+    Wdk::System::{
+        SystemInformation::{NtQuerySystemInformation, SYSTEM_INFORMATION_CLASS},
+        Threading::{NtQueryInformationProcess, PROCESSINFOCLASS},
+    },
+    Win32::{
+        Foundation::BOOL,
+        System::{
+            Threading::{
+                IsWow64Process, OpenProcess, PROCESS_BASIC_INFORMATION, PROCESS_QUERY_INFORMATION,
+                PROCESS_VM_READ,
+            },
+            WindowsProgramming::SYSTEM_PROCESS_INFORMATION,
+        },
+    },
 };
+
+use std::ptr::null_mut;
 
 mod errors;
 mod tests;
 use errors::Errors;
 mod types;
-use types::{ProcessThings, Sic};
+use types::{ProcessThings, SysInfoClass};
 
 fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     if process.ImageName.Buffer.is_null() {
@@ -18,26 +32,70 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     }))
 }
 
+fn get_peb(process_list: &mut Vec<ProcessThings>) {
+    static BASICPROCESSINFO: PROCESSINFOCLASS =
+        PROCESSINFOCLASS(SysInfoClass::ProcessBasicInformation as i32);
+
+    let buffer_size = size_of::<PROCESS_BASIC_INFORMATION>();
+    let mut process_basic_info = Vec::<u8>::with_capacity(buffer_size);
+    let mut arch: BOOL = BOOL(0);
+
+    for process in process_list {
+        unsafe {
+            let handle = match OpenProcess(
+                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                false,
+                process.id,
+            ) {
+                Ok(h) => h,
+                Err(why) => panic!("{}", why),
+            };
+
+            let _ = IsWow64Process(handle, &mut arch);
+            let _ntstatus = NtQueryInformationProcess(
+                handle,
+                BASICPROCESSINFO,
+                process_basic_info.as_mut_ptr().cast(),
+                buffer_size.try_into().unwrap(),
+                null_mut(),
+            );
+
+            let proc_info: PROCESS_BASIC_INFORMATION = *(process_basic_info.as_ptr().cast());
+
+            if arch.as_bool() {
+                process.peb = (proc_info.PebBaseAddress as u64 + 0x1000) as *mut u64;
+                process.arch = false;
+            } else {
+                process.peb = (proc_info.PebBaseAddress as u64) as *mut u64;
+                process.arch = true;
+            }
+            // Must use ReadProcessMemory/ReadProcessMemoryEx to read PEB values
+            // let peb: PEB = *(process.peb.cast::<u64>()).cast();
+        }
+    }
+}
+
 fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
     static SYSPROCESSINFO: SYSTEM_INFORMATION_CLASS =
-        SYSTEM_INFORMATION_CLASS(Sic::SysProcessList as i32);
+        SYSTEM_INFORMATION_CLASS(SysInfoClass::SysProcessList as i32);
 
     if process_name.is_empty() {
         return Err(Errors::ProcessNotFound);
     }
 
     let mut process_list: Vec<ProcessThings> = Vec::new();
-    let mut buffer_size = 1024 * 1024;
+    let buffer_size = 1024 * 1024;
     let mut process_information = Vec::<u8>::with_capacity(buffer_size.try_into().unwrap());
+    let mut count = 0u32;
+
     let _ = unsafe {
         NtQuerySystemInformation(
             SYSPROCESSINFO,
             process_information.as_mut_ptr().cast(),
             buffer_size,
-            &mut buffer_size,
+            null_mut(),
         )
     };
-    let mut count = 0u32;
 
     loop {
         let process: SYSTEM_PROCESS_INFORMATION = unsafe {
@@ -58,6 +116,8 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
                     threads: process.NumberOfThreads,
                     handles: process.HandleCount,
                     id: process.UniqueProcessId.0 as u32,
+                    peb: null_mut(),
+                    arch: true,
                 });
             }
         }
@@ -77,14 +137,24 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
 }
 
 fn main() {
-    let plist = match get_process("gta5.exe") {
+    let mut plist = match get_process("gta5.exe") {
         Ok(plist) => plist,
         Err(why) => panic!("{}", why),
     };
+
+    get_peb(&mut plist);
+
     for process in &plist {
+        let arch = if process.arch { "x64" } else { "x32" };
         println!(
-            "Process ID: 0x{:04X} Name: {} Threads: {:04} Handles: {:04}",
-            process.id, process.name, process.threads, process.handles
+            "{} Process ID: 0x{:04X}({:05}) Name: {} Threads: {:04} Handles: {:04} PEB: 0x{:010X}",
+            arch,
+            process.id,
+            process.id,
+            process.name,
+            process.threads,
+            process.handles,
+            process.peb as u64
         );
     }
     println!("Total: {:?}", plist.len());
