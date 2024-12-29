@@ -16,3 +16,17 @@ pub struct ProcessThings {
     pub peb: *mut u64,
     pub arch: bool,
 }
+pub trait CastPointers {
+    fn as_mut_ptr<T>(&mut self) -> *mut T;
+    fn as_ptr<T>(&self) -> *const T;
+}
+impl CastPointers for u64 {
+    #[inline]
+    fn as_mut_ptr<T>(&mut self) -> *mut T {
+        *self as *mut T
+    }
+    #[inline]
+    fn as_ptr<T>(&self) -> *const T {
+        *self as *const T
+    }
+}

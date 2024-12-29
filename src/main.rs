@@ -21,7 +21,7 @@ mod errors;
 mod tests;
 use errors::Errors;
 mod types;
-use types::{ProcessThings, SysInfoClass};
+use types::{CastPointers, ProcessThings, SysInfoClass};
 
 fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     if process.ImageName.Buffer.is_null() {
@@ -63,10 +63,10 @@ fn get_peb(process_list: &mut Vec<ProcessThings>) {
             let proc_info: PROCESS_BASIC_INFORMATION = *(process_basic_info.as_ptr().cast());
 
             if arch.as_bool() {
-                process.peb = (proc_info.PebBaseAddress as u64 + 0x1000) as *mut u64;
+                process.peb = (proc_info.PebBaseAddress as u64 + 0x1000).as_mut_ptr();
                 process.arch = false;
             } else {
-                process.peb = (proc_info.PebBaseAddress as u64) as *mut u64;
+                process.peb = (proc_info.PebBaseAddress as u64).as_mut_ptr();
                 process.arch = true;
             }
             // Must use ReadProcessMemory/ReadProcessMemoryEx to read PEB values
