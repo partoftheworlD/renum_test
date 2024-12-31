@@ -88,6 +88,7 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
         process.peb_data = data;
 
         // Get LDR
+        // TODO: Add LDR support for x86, currently only x64 pointer is correct
         ptr = process.peb_data.Ldr as *const _;
         let mut data: PEB_LDR_DATA = unsafe { mem::zeroed() };
         unsafe {
