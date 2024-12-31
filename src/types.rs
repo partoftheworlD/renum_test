@@ -19,7 +19,7 @@ pub struct ProcessThings {
     pub handles: u32,
     pub id: u32,
     pub arch: bool,
-    pub peb_ptr: *mut u64,
+    pub peb_ptr: *const u64,
     pub peb_data: PEB,
 }
 pub trait CastPointers {
