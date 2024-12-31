@@ -6,22 +6,23 @@ use windows::{
     Win32::{
         Foundation::BOOL,
         System::{
+            Diagnostics::Debug::ReadProcessMemory,
             Threading::{
-                IsWow64Process, OpenProcess, PROCESS_BASIC_INFORMATION, PROCESS_QUERY_INFORMATION,
-                PROCESS_VM_READ,
+                IsWow64Process, OpenProcess, PEB, PEB_LDR_DATA, PROCESS_BASIC_INFORMATION,
+                PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
             },
             WindowsProgramming::SYSTEM_PROCESS_INFORMATION,
         },
     },
 };
 
-use std::ptr::null_mut;
+use std::{mem, ptr::null_mut};
 
 mod errors;
 mod tests;
 use errors::Errors;
 mod types;
-use types::{CastPointers as _, ProcessThings, SysInfoClass};
+use types::{CastPointers, ProcessThings, SysInfoClass};
 
 fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     if process.ImageName.Buffer.is_null() {
@@ -32,7 +33,7 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     }))
 }
 
-fn get_peb(process_list: &mut Vec<ProcessThings>) {
+fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
     static BASICPROCESSINFO: PROCESSINFOCLASS =
         PROCESSINFOCLASS(SysInfoClass::ProcessBasicInformation as i32);
 
@@ -66,14 +67,38 @@ fn get_peb(process_list: &mut Vec<ProcessThings>) {
         let proc_info: PROCESS_BASIC_INFORMATION = unsafe { *(process_basic_info.as_ptr().cast()) };
 
         if arch.as_bool() {
-            process.peb = (proc_info.PebBaseAddress as u64 + 0x1000).as_mut_ptr();
+            process.peb_ptr = (proc_info.PebBaseAddress as u64 + 0x1000).as_mut_ptr();
             process.arch = false;
         } else {
-            process.peb = (proc_info.PebBaseAddress as u64).as_mut_ptr();
+            process.peb_ptr = (proc_info.PebBaseAddress as u64).as_mut_ptr();
             process.arch = true;
         }
-        // Must use ReadProcessMemory/ReadProcessMemoryEx to read PEB values
-        // let peb: PEB = *(process.peb.cast::<u64>()).cast();
+
+        let mut ptr = process.peb_ptr as *const _;
+        let mut data: PEB = unsafe { mem::zeroed() };
+        unsafe {
+            let _ = ReadProcessMemory(
+                handle,
+                ptr,
+                data.as_mut_ptr(),
+                size_of_val(&data),
+                Some(&mut 0),
+            );
+        };
+        process.peb_data = data;
+
+        // Get LDR
+        ptr = process.peb_data.Ldr as *const _;
+        let mut data: PEB_LDR_DATA = unsafe { mem::zeroed() };
+        unsafe {
+            let _ = ReadProcessMemory(
+                handle,
+                ptr,
+                data.as_mut_ptr(),
+                size_of_val(&data),
+                Some(&mut 0),
+            );
+        };
     }
 }
 
@@ -118,8 +143,9 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
                     threads: process.NumberOfThreads,
                     handles: process.HandleCount,
                     id: process.UniqueProcessId.0 as u32,
-                    peb: null_mut(),
+                    peb_ptr: null_mut(),
                     arch: true,
+                    peb_data: PEB::default(),
                 });
             }
         }
@@ -144,19 +170,20 @@ fn main() {
         Err(why) => panic!("{}", why),
     };
 
-    get_peb(&mut plist);
+    get_peb_ldr(&mut plist);
 
     for process in &plist {
         let arch = if process.arch { "x64" } else { "x32" };
         println!(
-            "{} Process ID: 0x{:04X} ({:05}) Name: {} Threads: {:04} Handles: {:04} PEB: 0x{:010X}",
+            "{} Process ID: 0x{:04X} ({:05}) Name: {} Threads: {:04} Handles: {:04} PEB: 0x{:010X} LDR: 0x{:X}",
             arch,
             process.id,
             process.id,
             process.name,
             process.threads,
             process.handles,
-            process.peb as u64
+            process.peb_ptr as u64,
+            process.peb_data.Ldr as u64
         );
     }
     println!("Total: {:?}", plist.len());

@@ -1,6 +1,6 @@
-#[expect(unused_imports)]
+#[allow(unused_imports)]
 use crate::{errors::Errors, get_process, read_pwstr};
-#[expect(unused_imports)]
+#[allow(unused_imports)]
 use windows::Win32::System::WindowsProgramming::SYSTEM_PROCESS_INFORMATION;
 
 #[test]
