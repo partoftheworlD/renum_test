@@ -149,7 +149,7 @@ fn main() {
     for process in &plist {
         let arch = if process.arch { "x64" } else { "x32" };
         println!(
-            "{} Process ID: 0x{:04X}({:05}) Name: {} Threads: {:04} Handles: {:04} PEB: 0x{:010X}",
+            "{} Process ID: 0x{:04X} ({:05}) Name: {} Threads: {:04} Handles: {:04} PEB: 0x{:010X}",
             arch,
             process.id,
             process.id,

@@ -17,16 +17,18 @@ pub struct ProcessThings {
     pub arch: bool,
 }
 pub trait CastPointers {
-    fn as_mut_ptr<T>(&mut self) -> *mut T;
-    fn as_ptr<T>(&self) -> *const T;
+    type Item;
+    fn as_mut_ptr(&mut self) -> *mut Self::Item;
+    fn as_ptr(&self) -> *const Self::Item;
 }
 impl CastPointers for u64 {
+    type Item = u64;
     #[inline]
-    fn as_mut_ptr<T>(&mut self) -> *mut T {
-        *self as *mut T
+    fn as_mut_ptr(&mut self) -> *mut Self::Item {
+        *self as *mut Self::Item
     }
     #[inline]
-    fn as_ptr<T>(&self) -> *const T {
-        *self as *const T
+    fn as_ptr(&self) -> *const Self::Item {
+        *self as *const Self::Item
     }
 }
