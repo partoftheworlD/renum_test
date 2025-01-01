@@ -1,4 +1,7 @@
-use std::os::raw::c_void;
+use std::{
+    os::raw::c_void,
+    ptr::{from_mut, from_ref},
+};
 
 use windows::Win32::System::{
     Threading::{PEB, PEB_LDR_DATA},
@@ -25,12 +28,12 @@ pub struct ProcessThings {
 pub trait CastPointers<T, U> {
     #[inline]
     fn as_ptr(&self) -> *const U {
-        self as *const _ as *const _
+        from_ref(self).cast()
     }
 
     #[inline]
     fn as_mut_ptr(&mut self) -> *mut U {
-        self as *mut _ as *mut _
+        from_mut(self).cast()
     }
 }
 
