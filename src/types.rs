@@ -22,43 +22,27 @@ pub struct ProcessThings {
     pub peb_ptr: *const u64,
     pub peb_data: PEB,
 }
-pub trait CastPointers {
-    type Item;
-    fn as_mut_ptr(&mut self) -> *mut Self::Item;
-    fn as_ptr(&self) -> *const Self::Item;
-}
-impl CastPointers for u64 {
-    type Item = u64;
+pub trait CastPointers<T, U> {
     #[inline]
-    fn as_mut_ptr(&mut self) -> *mut Self::Item {
-        *self as *mut Self::Item
+    fn as_ptr(&self) -> *const U {
+        self as *const _ as *const _
     }
+
     #[inline]
-    fn as_ptr(&self) -> *const Self::Item {
-        *self as *const Self::Item
+    fn as_mut_ptr(&mut self) -> *mut U {
+        self as *mut _ as *mut _
     }
 }
 
-impl CastPointers for PEB {
-    type Item = c_void;
-    #[inline]
-    fn as_mut_ptr(&mut self) -> *mut Self::Item {
-        self as *mut _ as *mut _
-    }
-    #[inline]
-    fn as_ptr(&self) -> *const Self::Item {
-        self as *const _ as *const _
-    }
-}
+impl CastPointers<PEB, c_void> for PEB {}
+impl CastPointers<PEB_LDR_DATA, c_void> for PEB_LDR_DATA {}
 
-impl CastPointers for PEB_LDR_DATA {
-    type Item = c_void;
-    #[inline]
-    fn as_mut_ptr(&mut self) -> *mut Self::Item {
-        self as *mut _ as *mut _
+impl CastPointers<u64, u64> for u64 {
+    fn as_ptr(&self) -> *const u64 {
+        *self as *const _
     }
-    #[inline]
-    fn as_ptr(&self) -> *const Self::Item {
-        self as *const _ as *const _
+
+    fn as_mut_ptr(&mut self) -> *mut u64 {
+        *self as *mut _
     }
 }
