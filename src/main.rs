@@ -123,9 +123,9 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
             process.arch = true;
         }
 
-        let ptr = process.peb_ptr.cast::<c_void>();
+        let ptr = process.peb_ptr.cast();
         let mut data: PEB = unsafe { mem::zeroed() };
-        read_memory::<PEB>(&handle, ptr, &mut data);
+        read_memory(&handle, ptr, &mut data);
 
         process.peb_data = data;
 

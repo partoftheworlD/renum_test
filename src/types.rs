@@ -1,6 +1,6 @@
 use std::{
     os::raw::c_void,
-    ptr::{from_mut, from_ref},
+    ptr::{from_mut, from_ref}, usize,
 };
 
 use windows::Win32::System::{
@@ -37,8 +37,7 @@ pub trait CastPointers<U> {
     }
 }
 
-impl CastPointers<c_void> for PEB {}
-impl CastPointers<c_void> for PEB_LDR_DATA {}
+impl<T> CastPointers<c_void> for T {}
 
 impl CastPointers<usize> for usize {
     fn as_ptr(&self) -> *const usize {
