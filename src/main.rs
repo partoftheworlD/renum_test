@@ -33,7 +33,10 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     }))
 }
 
-fn read_memory<T: CastPointers<c_void>>(handle: &HANDLE, ptr: *const c_void, buffer: &mut T) {
+fn read_memory<T>(handle: &HANDLE, ptr: *const c_void, buffer: &mut T)
+where
+    T: CastPointers<c_void>,
+{
     unsafe {
         match ReadProcessMemory(
             *handle,
