@@ -16,7 +16,7 @@ use windows::{
     },
 };
 
-use std::{mem, ptr::null_mut};
+use std::{ffi::c_void, mem, ptr::null_mut};
 
 mod errors;
 mod tests;
@@ -31,6 +31,21 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     Ok(String::from_utf16_lossy(unsafe {
         process.ImageName.Buffer.as_wide()
     }))
+}
+
+fn read_memory<T: CastPointers<c_void>>(handle: &HANDLE, ptr: *const c_void, buffer: &mut T) {
+    unsafe {
+        let _res = match ReadProcessMemory(
+            *handle,
+            ptr,
+            buffer.as_mut_ptr().cast(),
+            size_of_val(buffer),
+            Some(&mut 0),
+        ) {
+            Ok(_) => (),
+            Err(why) => panic!("{why}"),
+        };
+    };
 }
 
 fn get_process_information(
@@ -50,7 +65,11 @@ fn get_process_information(
     };
 }
 
-fn get_system_information(infoclass: &SYSTEM_INFORMATION_CLASS, buffer: &mut Vec<u8>, buffer_size: u32) {
+fn get_system_information(
+    infoclass: &SYSTEM_INFORMATION_CLASS,
+    buffer: &mut Vec<u8>,
+    buffer_size: u32,
+) {
     let _ntstatus = unsafe {
         NtQuerySystemInformation(
             *infoclass,
@@ -101,32 +120,19 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
             process.arch = true;
         }
 
-        let mut ptr = process.peb_ptr.cast();
+        let ptr = process.peb_ptr.cast::<c_void>();
         let mut data: PEB = unsafe { mem::zeroed() };
-        unsafe {
-            let _ = ReadProcessMemory(
-                handle,
-                ptr,
-                data.as_mut_ptr(),
-                size_of_val(&data),
-                Some(&mut 0),
-            );
-        };
+        read_memory::<PEB>(&handle, ptr, &mut data);
+
         process.peb_data = data;
 
-        // Get LDR
-        // TODO: Add LDR support for x86, currently only x64 pointer is correct
-        ptr = process.peb_data.Ldr as *const _;
+        /* 
+        Get LDR
+        TODO: Add LDR support for x86, currently only x64 pointer is correct
+        let ptr = data.Ldr as _;
         let mut data: PEB_LDR_DATA = unsafe { mem::zeroed() };
-        unsafe {
-            let _ = ReadProcessMemory(
-                handle,
-                ptr,
-                data.as_mut_ptr(),
-                size_of_val(&data),
-                Some(&mut 0),
-            );
-        };
+        read_memory::<PEB_LDR_DATA>(&handle, ptr, &mut data);
+        */
     }
 }
 
@@ -186,7 +192,7 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
 }
 
 fn main() {
-    let mut plist = match get_process("code.exe") {
+    let mut plist = match get_process("gta5.exe") {
         Ok(plist) => plist,
         Err(why) => panic!("{}", why),
     };

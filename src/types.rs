@@ -25,7 +25,7 @@ pub struct ProcessThings {
     pub peb_ptr: *const usize,
     pub peb_data: PEB,
 }
-pub trait CastPointers<T, U> {
+pub trait CastPointers<U> {
     #[inline]
     fn as_ptr(&self) -> *const U {
         from_ref(self).cast()
@@ -37,10 +37,10 @@ pub trait CastPointers<T, U> {
     }
 }
 
-impl CastPointers<PEB, c_void> for PEB {}
-impl CastPointers<PEB_LDR_DATA, c_void> for PEB_LDR_DATA {}
+impl CastPointers<c_void> for PEB {}
+impl CastPointers<c_void> for PEB_LDR_DATA {}
 
-impl CastPointers<usize, usize> for usize {
+impl CastPointers<usize> for usize {
     fn as_ptr(&self) -> *const usize {
         *self as *const _
     }
