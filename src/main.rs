@@ -4,7 +4,7 @@ use windows::{
         Threading::{NtQueryInformationProcess, PROCESSINFOCLASS},
     },
     Win32::{
-        Foundation::BOOL,
+        Foundation::{BOOL, HANDLE},
         System::{
             Diagnostics::Debug::ReadProcessMemory,
             Threading::{
@@ -33,8 +33,36 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
     }))
 }
 
+fn get_process_information(
+    handle: &HANDLE,
+    infoclass: &PROCESSINFOCLASS,
+    buffer: &mut Vec<u8>,
+    buffer_size: usize,
+) {
+    let _ntstatus = unsafe {
+        NtQueryInformationProcess(
+            *handle,
+            *infoclass,
+            buffer.as_mut_ptr().cast(),
+            buffer_size.try_into().unwrap(),
+            null_mut(),
+        )
+    };
+}
+
+fn get_system_information(infoclass: &SYSTEM_INFORMATION_CLASS, buffer: &mut Vec<u8>, buffer_size: u32) {
+    let _ntstatus = unsafe {
+        NtQuerySystemInformation(
+            *infoclass,
+            buffer.as_mut_ptr().cast(),
+            buffer_size,
+            null_mut(),
+        )
+    };
+}
+
 fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
-    static BASICPROCESSINFO: PROCESSINFOCLASS =
+    const BASICPROCESSINFO: PROCESSINFOCLASS =
         PROCESSINFOCLASS(SysInfoClass::ProcessBasicInformation as i32);
 
     let buffer_size = size_of::<PROCESS_BASIC_INFORMATION>();
@@ -54,15 +82,14 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
         };
 
         let _ = unsafe { IsWow64Process(handle, &mut arch) };
-        let _ntstatus = unsafe {
-            NtQueryInformationProcess(
-                handle,
-                BASICPROCESSINFO,
-                process_basic_info.as_mut_ptr().cast(),
-                buffer_size.try_into().unwrap(),
-                null_mut(),
-            )
-        };
+
+        let _ntstatus = get_process_information(
+            &handle,
+            &BASICPROCESSINFO,
+            &mut process_basic_info,
+            buffer_size,
+        );
+
         // SAFETY: Simple cast *(PROCESS_BASIC_INFORMATION*)process_basic_info
         let proc_info: PROCESS_BASIC_INFORMATION = unsafe { *(process_basic_info.as_ptr().cast()) };
 
@@ -116,14 +143,7 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
     let mut process_information = Vec::<u8>::with_capacity(buffer_size.try_into().unwrap());
     let mut count = 0u32;
 
-    let _ = unsafe {
-        NtQuerySystemInformation(
-            SYSPROCESSINFO,
-            process_information.as_mut_ptr().cast(),
-            buffer_size,
-            null_mut(),
-        )
-    };
+    let _ = get_system_information(&SYSPROCESSINFO, &mut process_information, buffer_size);
 
     loop {
         let process: SYSTEM_PROCESS_INFORMATION = unsafe {
@@ -166,7 +186,7 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
 }
 
 fn main() {
-    let mut plist = match get_process("gta5.exe") {
+    let mut plist = match get_process("code.exe") {
         Ok(plist) => plist,
         Err(why) => panic!("{}", why),
     };
