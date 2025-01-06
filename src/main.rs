@@ -35,14 +35,14 @@ fn read_pwstr(process: &SYSTEM_PROCESS_INFORMATION) -> Result<String, Errors> {
 
 fn read_memory<T: CastPointers<c_void>>(handle: &HANDLE, ptr: *const c_void, buffer: &mut T) {
     unsafe {
-        let _res = match ReadProcessMemory(
+        match ReadProcessMemory(
             *handle,
             ptr,
             buffer.as_mut_ptr().cast(),
             size_of_val(buffer),
             Some(&mut 0),
         ) {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(why) => panic!("{why}"),
         };
     };
@@ -102,7 +102,7 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
 
         let _ = unsafe { IsWow64Process(handle, &mut arch) };
 
-        let _ntstatus = get_process_information(
+        get_process_information(
             &handle,
             &BASICPROCESSINFO,
             &mut process_basic_info,
@@ -126,7 +126,7 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
 
         process.peb_data = data;
 
-        /* 
+        /*
         Get LDR
         TODO: Add LDR support for x86, currently only x64 pointer is correct
         let ptr = data.Ldr as _;
@@ -149,7 +149,7 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
     let mut process_information = Vec::<u8>::with_capacity(buffer_size.try_into().unwrap());
     let mut count = 0u32;
 
-    let _ = get_system_information(&SYSPROCESSINFO, &mut process_information, buffer_size);
+    get_system_information(&SYSPROCESSINFO, &mut process_information, buffer_size);
 
     loop {
         let process: SYSTEM_PROCESS_INFORMATION = unsafe {
