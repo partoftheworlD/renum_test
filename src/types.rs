@@ -22,7 +22,7 @@ pub struct ProcessThings {
     pub handles: u32,
     pub id: u32,
     pub arch: bool,
-    pub peb_ptr: *const u64,
+    pub peb_ptr: *const usize,
     pub peb_data: PEB,
 }
 pub trait CastPointers<T, U> {
@@ -40,12 +40,12 @@ pub trait CastPointers<T, U> {
 impl CastPointers<PEB, c_void> for PEB {}
 impl CastPointers<PEB_LDR_DATA, c_void> for PEB_LDR_DATA {}
 
-impl CastPointers<u64, u64> for u64 {
-    fn as_ptr(&self) -> *const u64 {
+impl CastPointers<usize, usize> for usize {
+    fn as_ptr(&self) -> *const usize {
         *self as *const _
     }
 
-    fn as_mut_ptr(&mut self) -> *mut u64 {
+    fn as_mut_ptr(&mut self) -> *mut usize {
         *self as *mut _
     }
 }

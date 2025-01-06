@@ -67,10 +67,10 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
         let proc_info: PROCESS_BASIC_INFORMATION = unsafe { *(process_basic_info.as_ptr().cast()) };
 
         if arch.as_bool() {
-            process.peb_ptr = (proc_info.PebBaseAddress as u64 + 0x1000).as_mut_ptr();
+            process.peb_ptr = (proc_info.PebBaseAddress as usize + 0x1000).as_mut_ptr();
             process.arch = false;
         } else {
-            process.peb_ptr = (proc_info.PebBaseAddress as u64).as_mut_ptr();
+            process.peb_ptr = (proc_info.PebBaseAddress as usize).as_mut_ptr();
             process.arch = true;
         }
 
@@ -175,16 +175,17 @@ fn main() {
 
     for process in &plist {
         let arch = if process.arch { "x64" } else { "x32" };
+        let pid = process.id;
         println!(
-            "{} Process ID: 0x{:04X} ({:05}) Name: {} Threads: {:04} Handles: {:04} PEB: 0x{:010X} LDR: 0x{:X}",
+            "{} Process ID: 0x{:04X} ({:05}) Name: {} Threads: {:04} Handles: {:04} PEB: 0x{:X} LDR: 0x{:X}",
             arch,
-            process.id,
-            process.id,
+            pid,
+            pid,
             process.name,
             process.threads,
             process.handles,
-            process.peb_ptr as u64,
-            process.peb_data.Ldr as u64
+            process.peb_ptr as usize,
+            process.peb_data.Ldr as usize
         );
     }
     println!("Total: {:?}", plist.len());
