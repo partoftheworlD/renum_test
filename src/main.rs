@@ -1,10 +1,11 @@
 use windows::{
+    core::BOOL,
     Wdk::System::{
         SystemInformation::{NtQuerySystemInformation, SYSTEM_INFORMATION_CLASS},
         Threading::{NtQueryInformationProcess, PROCESSINFOCLASS},
     },
     Win32::{
-        Foundation::{BOOL, HANDLE},
+        Foundation::HANDLE,
         System::{
             Diagnostics::Debug::ReadProcessMemory,
             Threading::{
@@ -99,7 +100,7 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
                 process.id,
             ) {
                 Ok(handle) => handle,
-                Err(why) => panic!("{}", why),
+                Err(why) => panic!("{why}"),
             }
         };
 
@@ -161,7 +162,7 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
         if !process.ImageName.Buffer.is_null() {
             let name = match read_pwstr(&process) {
                 Ok(process_name) => process_name,
-                Err(why) => panic!("{}", why),
+                Err(why) => panic!("{why}"),
             };
             if name.to_ascii_lowercase() == process_name {
                 process_list.push(ProcessThings {
@@ -194,7 +195,7 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
 fn main() {
     let mut plist = match get_process("gta5.exe") {
         Ok(plist) => plist,
-        Err(why) => panic!("{}", why),
+        Err(why) => panic!("{why}"),
     };
 
     get_peb_ldr(&mut plist);

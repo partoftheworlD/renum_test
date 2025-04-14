@@ -30,6 +30,7 @@ pub struct ProcessThings {
 }
 pub trait CastPointers<U> {
     #[inline]
+    #[allow(dead_code)]
     fn as_ptr(&self) -> *const U {
         from_ref(self).cast()
     }
