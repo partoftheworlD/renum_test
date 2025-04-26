@@ -5,6 +5,7 @@ use std::{
 
 use windows::Win32::System::{Threading::PEB, WindowsProgramming::SYSTEM_PROCESS_INFORMATION};
 
+#[repr(C)]
 //SYSTEM_INFORMATION_CLASS enum
 pub enum SysInfoClass {
     ProcessBasicInformation,
@@ -28,6 +29,7 @@ pub struct ProcessThings {
     pub peb_ptr: *const usize,
     pub peb_data: PEB,
 }
+
 pub trait CastPointers<U> {
     #[inline]
     #[allow(dead_code)]

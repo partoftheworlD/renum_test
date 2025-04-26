@@ -88,8 +88,8 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
     const BASICPROCESSINFO: PROCESSINFOCLASS =
         PROCESSINFOCLASS(SysInfoClass::ProcessBasicInformation as i32);
 
-    let buffer_size = size_of::<PROCESS_BASIC_INFORMATION>();
-    let mut process_basic_info = Vec::<u8>::with_capacity(buffer_size);
+    const BUFFER_SIZE: usize = size_of::<PROCESS_BASIC_INFORMATION>();
+    let mut process_basic_info = Vec::<u8>::with_capacity(BUFFER_SIZE);
     let mut arch = BOOL(0);
 
     for process in process_list {
@@ -110,7 +110,7 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
             &handle,
             &BASICPROCESSINFO,
             &mut process_basic_info,
-            buffer_size,
+            BUFFER_SIZE,
         );
 
         // SAFETY: Simple cast *(PROCESS_BASIC_INFORMATION*)process_basic_info
@@ -138,7 +138,7 @@ fn get_peb_ldr(process_list: &mut Vec<ProcessThings>) {
 }
 
 fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
-    static SYSPROCESSINFO: SYSTEM_INFORMATION_CLASS =
+    const SYSPROCESSINFO: SYSTEM_INFORMATION_CLASS =
         SYSTEM_INFORMATION_CLASS(SysInfoClass::SysProcessList as i32);
 
     if process_name.is_empty() {
@@ -146,11 +146,15 @@ fn get_process(process_name: &str) -> Result<Vec<ProcessThings>, Errors> {
     }
 
     let mut process_list: Vec<ProcessThings> = Vec::new();
-    let buffer_size = 1024 * 1024;
-    let mut process_information = Vec::<u8>::with_capacity(buffer_size.try_into().unwrap());
+    const BUFFER_SIZE: usize = 1024 * 1024;
+    let mut process_information = Vec::<u8>::with_capacity(BUFFER_SIZE);
     let mut count = 0u32;
 
-    get_system_information(&SYSPROCESSINFO, &mut process_information, buffer_size);
+    get_system_information(
+        &SYSPROCESSINFO,
+        &mut process_information,
+        BUFFER_SIZE.try_into().unwrap(),
+    );
 
     loop {
         let process: SYSTEM_PROCESS_INFORMATION = unsafe {

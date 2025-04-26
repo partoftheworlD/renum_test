@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+#[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Errors<'src> {
     EmptyBuffer(&'src str),
